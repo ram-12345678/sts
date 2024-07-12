@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speaker Page</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        /* Existing CSS code */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Speech Input</h1>
+        <button id="start-record-btn">Start Recording</button>
+        <button id="stop-record-btn" style="display: none;">Stop Recording</button>
+        <div id="result">
+            <h2>Recognized Text:</h2>
+            <p id="recognized-text"></p>
+        </div>
+
+        <label for="source-lang-select">Select Source Language:</label>
+        <select id="source-lang-select">
+            <option value="en-US">English</option>
+            <option value="fr-FR">French</option>
+            <option value="es-ES">Spanish</option>
+            <option value="de-DE">German</option>
+            <option value="hi-IN">Hindi</option>
+            <!-- Add more options for additional languages as needed -->
+        </select>
+
+        <button onclick="location.href='/';">Back to Home</button>
+    </div>
+
+    <script>
+        // JavaScript specific to the speaker page
+        let recognition;
+        let recording = false;
+        let lastTranscript = '';
+
+        function initializeRecognition() {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            const inputLang = document.getElementById('source-lang-select').value;
+            recognition.lang = inputLang;
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = function(event) {
+                let transcript = event.results[event.resultIndex][0].transcript.trim();
+                if (transcript && transcript !== lastTranscript) {
+                    lastTranscript = transcript;
+                    document.getElementById('recognized-text').innerText = transcript;
+                    translateText(transcript);
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error', event.error);
+            };
+        }
+
+        function startRecording() {
+            if (!recording) {
+                initializeRecognition();
+                recognition.start();
+                recording = true;
+                document.getElementById('start-record-btn').style.display = 'none';
+                document.getElementById('stop-record-btn').style.display = 'inline-block';
+            }
+        }
+
+        function stopRecording() {
+            if (recording) {
+                recording = false;
+                document.getElementById('start-record-btn').style.display = 'inline-block';
+                document.getElementById('stop-record-btn').style.display = 'none';
+                lastTranscript = '';
+            }
+        }
+
+        document.getElementById('start-record-btn').addEventListener('click', startRecording);
+        document.getElementById('stop-record-btn').addEventListener('click', stopRecording);
+
+        function translateText(text) {
+            let targetLang = document.getElementById('target-lang-select').value;
+            $.ajax({
+                type: 'POST',
+                url: '/translate',
+                contentType: 'application/json',
+                data: JSON.stringify({ text: text, lang: targetLang }),
+                success: function(response) {
+                    if (response.translated_text) {
+                        document.getElementById('translated-text').innerText = response.translated_text;
+                    } else {
+                        document.getElementById('translated-text').innerText = 'Translation failed';
+                    }
+                },
+                error: function(error) {
+                    console.error('Error:', error);
+                    document.getElementById('translated-text').innerText = 'Translation failed';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,44 +1,23 @@
-from flask import Flask, render_template, request, jsonify
-import speech_recognition as sr
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from googletrans import Translator
 from gtts import gTTS
 import os
 import uuid
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/translate/static')
 translator = Translator()
-recognizer = sr.Recognizer()
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/recognize', methods=['POST'])
-def recognize():
-    try:
-        audio_file = request.files['audio']
-        audio_path = os.path.join('static', 'audio', f"{uuid.uuid4()}.wav")
-        audio_file.save(audio_path)
+@app.route('/speaker')
+def speaker():
+    return render_template('speaker.html')
 
-        # Configure speech recognition with PocketSphinx for offline usage
-        with sr.AudioFile(audio_path) as source:
-            recognizer.adjust_for_ambient_noise(source, duration=1)  # Adjust for noise
-            audio = recognizer.record(source)
-
-            # Perform recognition
-            text = recognize_sphinx(audio)
-            return jsonify({'recognized_text': text})
-    except Exception as e:
-        return jsonify({'recognized_text': '', 'error': str(e)})
-
-def recognize_sphinx(audio):
-    try:
-        text = recognizer.recognize_sphinx(audio)
-        return text
-    except sr.UnknownValueError:
-        return ''
-    except sr.RequestError as e:
-        return str(e)
+@app.route('/listener')
+def listener():
+    return render_template('listener.html')
 
 @app.route('/translate', methods=['POST'])
 def translate():
@@ -55,17 +34,19 @@ def translate():
     except Exception as e:
         return jsonify({'translated_text': 'Translation failed', 'error': str(e)})
 
-@app.route('/text-to-speech', methods=['POST'])
+@app.route('/translate/text-to-speech', methods=['POST'])
 def text_to_speech():
     data = request.get_json()
     text = data.get('text', '')
     lang = data.get('lang', 'en')
+    accent = data.get('accent', 'com')
+    gender = data.get('gender', 'neutral')  # Gender option added
 
     if not text:
         return jsonify({'error': 'No text to convert to speech'})
 
     try:
-        tts = gTTS(text=text, lang=lang)
+        tts = gTTS(text=text, lang=lang, tld=accent)
         filename = f"{uuid.uuid4()}.mp3"
         filepath = os.path.join('static', 'audio', filename)
         tts.save(filepath)
@@ -75,4 +56,4 @@ def text_to_speech():
 
 if __name__ == '__main__':
     os.makedirs(os.path.join('static', 'audio'), exist_ok=True)
-    app.run(debug=True)
+    app.run()
